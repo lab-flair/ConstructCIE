@@ -1,0 +1,20 @@
+{
+  "working_circumstances": "Physical and operational contexts present at the time of the accident that characterize the immediate work situation.",
+  "construction_trade": "The primary construction activity division being performed at the time of the accident.",
+  "object_involved": "The equipment, structure, material, or object that physically interacted with or contributed to the accident mechanism.",
+  "managerial_factors": "Deficiencies at the organizational or supervisory level that allowed unsafe conditions or behaviors to exist.",
+  "failure_of_hazard_management": "Failure to identify or include foreseeable hazards during pre-task planning or risk assessment.",
+  "deficiency_in_safety_training": "Failure to provide adequate task-specific training enabling workers to perform tasks safely and respond to foreseeable hazards.",
+  "working_condition_factors": "Physical conditions of the work environment, such as natural conditions and workspace characteristics, that contributed to the occurrence of the accident.",
+  "weather_condition": "Weather-related conditions that influenced the work environment or contributed to the accident sequence.",
+  "workspace_condition": "Physical conditions related to the workspace, or structural elements, including spatial arrangement, support conditions, integrity, surface characteristics, or surrounding physical layout.",
+  "equipment_factors": "Conditions related to personal or collective protective equipment or work equipment whose state contributed to the accident sequence.",
+  "protective_equipment_condition": "The state, functionality, availability, configuration, or appropriateness of personal or collective protective equipment.",
+  "work_equipment_condition": "The functional state, physical integrity, configuration, or availability of tools, machinery, or powered/non-powered work equipment.",
+  "behavioral_factors": "Task-level human factors involving cognitive lapses or procedural deviations that directly contributed to the occurrence of the accident.",
+  "inattentive_behavior": "Behavior resulting from cognitive lapses such as reduced vigilance, distraction, or loss of situational awareness.",
+  "noncompliant_behavior": "Behavior involving the disregard of required safety rules, safe work practices, or protective measures.",
+  "consequences": "The adverse outcomes of the incident, including the seriousness of injury and the part(s) of the body affected.",
+  "severity": "The degree and seriousness of injury, ranging from minor to fatal.",
+  "affected_body_part": "The part(s) of the body that sustained harm due to the incident."
+}

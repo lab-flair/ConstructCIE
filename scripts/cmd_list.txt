@@ -1,0 +1,56 @@
+## Slurm CMD
+
+### Show & Request GPU allocation
+```
+sinfo
+sinfo -o "%N %G"
+gpuavail
+srun --pty --partition=gpu --gres=gpu:a100:1 --time=00:10:00 --mem=32G --ntasks=1 /bin/bash
+```
+
+## Shwo Jobs status
+```
+squeue -u $USER
+```
+
+### Show SU usage
+```
+myproject
+myproject -j [account_id]
+```
+
+### Load software
+```
+module spider packageName
+module load packageName/version
+```
+
+### Standard modules
+```
+module load WebProxy
+module load Miniconda3/23.10.0-1
+module load GCC/11.3.0
+module load CUDA/11.8.0
+```
+A100 CUDA 12.2
+
+### Remove software
+```
+module purge
+module unload packageName
+```
+
+## HF Download model
+```
+hf download Qwen/Qwen3.5-0.8B --local-dir local\models --token $(Get-Content local\tokens\HF_HOME.txt)
+```
+
+# Run Batch script
+```
+sbatch submit_job.sh
+squeue -u username
+scancel job_id
+rm jobs/*.sh
+squeue -u $USER -h | wc -l
+tail -f log_file
+```

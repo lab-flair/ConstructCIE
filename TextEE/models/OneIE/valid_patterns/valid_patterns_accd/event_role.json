@@ -1,0 +1,58 @@
+{
+  "caught_in_between": [
+    "work_ctx",
+    "mgmt_factor",
+    "cond_factor",
+    "equip_factor",
+    "human_factor",
+    "consq"
+  ],
+  "electrocution": [
+    "work_ctx",
+    "mgmt_factor",
+    "cond_factor",
+    "equip_factor",
+    "human_factor",
+    "consq"
+  ],
+  "fall": [
+    "work_ctx",
+    "mgmt_factor",
+    "cond_factor",
+    "equip_factor",
+    "human_factor",
+    "consq"
+  ],
+  "struck_by": [
+    "work_ctx",
+    "mgmt_factor",
+    "cond_factor",
+    "equip_factor",
+    "human_factor",
+    "consq"
+  ],
+  "work_ctx": [
+    "task",
+    "object"
+  ],
+  "mgmt_factor": [
+    "haz_id_fail",
+    "train_gap"
+  ],
+  "cond_factor": [
+    "weather",
+    "site_cond"
+  ],
+  "equip_factor": [
+    "ppe_cond",
+    "tool_cond"
+  ],
+  "human_factor": [
+    "inattention",
+    "violation"
+  ],
+  "consq": [
+    "severity",
+    "body_part"
+  ]
+}

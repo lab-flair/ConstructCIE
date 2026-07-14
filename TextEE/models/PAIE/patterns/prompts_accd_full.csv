@@ -1,0 +1,10 @@
+caught_in_between:prompt start, Working Circumstances ( and Working Circumstances ) Managerial Factors ( and Managerial Factors ) Working Condition Factors ( and Working Condition Factors ) Equipment Factors ( and Equipment Factors ) Behavioral Factors ( and Behavioral Factors ) Consequences ( and Consequences ) ,end  
+cond_factor:prompt start, Weather Condition ( and Weather Condition ) Workspace Condition ( and Workspace Condition ) ,end  
+consq:prompt start, Severity ( and Severity ) Affected Body Part ( and Affected Body Part ) ,end  
+electrocution:prompt start, Working Circumstances ( and Working Circumstances ) Managerial Factors ( and Managerial Factors ) Working Condition Factors ( and Working Condition Factors ) Equipment Factors ( and Equipment Factors ) Behavioral Factors ( and Behavioral Factors ) Consequences ( and Consequences ) ,end  
+equip_factor:prompt start, Protective Equipment Condition ( and Protective Equipment Condition ) Work Equipment Condition ( and Work Equipment Condition ) ,end  
+fall:prompt start, Working Circumstances ( and Working Circumstances ) Managerial Factors ( and Managerial Factors ) Working Condition Factors ( and Working Condition Factors ) Equipment Factors ( and Equipment Factors ) Behavioral Factors ( and Behavioral Factors ) Consequences ( and Consequences ) ,end  
+human_factor:prompt start, Inattentive Behavior ( and Inattentive Behavior ) Noncompliant Behavior ( and Noncompliant Behavior ) ,end  
+mgmt_factor:prompt start, Failure of Hazard Management ( and Failure of Hazard Management ) Deficiency in Safety Training ( and Deficiency in Safety Training ) ,end  
+struck_by:prompt start, Working Circumstances ( and Working Circumstances ) Managerial Factors ( and Managerial Factors ) Working Condition Factors ( and Working Condition Factors ) Equipment Factors ( and Equipment Factors ) Behavioral Factors ( and Behavioral Factors ) Consequences ( and Consequences ) ,end  
+work_ctx:prompt start, Construction Trade ( and Construction Trade ) Object Involved ( and Object Involved ) ,end  

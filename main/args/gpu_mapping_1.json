@@ -1,0 +1,181 @@
+{
+    "few_shot_buckets": {
+        "default": [1,1],
+        "JHE": {
+            "gemma4-26B": [4,4]
+        },
+        "IHE": {
+            "gemma4-26B": [4,4],
+            "Llama3.2-3B" : [2,4]
+        }
+    },
+    "few_shot_weights":{
+        "default": 0,
+        "JHE":{
+            "gemma4-26B": {
+                "0": 3.0,
+                "5": 3.5,
+                "10": 4.0,
+                "20": 4.0,
+                "30": 4.5,
+                "40": 5.0
+            }
+        },
+        "IHE":{
+            "gemma4-26B": {
+                "0": 1.5,
+                "5": 1.5,
+                "10": 1.5,
+                "20": 2.0,
+                "30": 2.0,
+                "40": 2.0
+            },
+            "Llama3.2-3B": {
+                "0": 0.5,
+                "5": 0.65,
+                "10": 2.5,
+                "20": 5,
+                "30": 7.5,
+                "40": 10
+            }
+        }
+    },
+    "eval_batch_size": {
+        "default": 8,
+        "JHE":{
+            "DyGIEpp": 8,
+            "Llama3.2-11B": {
+                "default": 8,
+                "30": 4,
+                "40": 2
+            },
+            "Qwen3.5-9B": {
+                "default": 8,
+                "30": 4,
+                "40": 2
+            },
+            "gemma4-26B":{
+                "default": 4,
+                "20": 2
+            },
+            "Qwen3.5-27B":{
+                "5": 4,
+                "20": 2,
+                "40": 1
+            },
+            "Llama3.1-70B":{
+                "5": 4,
+                "20": 2,
+                "40": 1
+            }
+
+        },
+        "IHE":{
+            "DyGIEpp": 8,
+            "Llama3.2-11B": {
+                "default": 8,
+                "30": 4,
+                "40": 2
+            },
+            "Qwen3.5-9B": {
+                "default": 8,
+                "30": 4,
+                "40": 2
+            },
+            "gemma4-26B":{
+                "default": 4,
+                "20": 2
+            },
+            "Qwen3.5-27B":{
+                "5": 4,
+                "20": 2,
+                "40": 1
+            },
+            "Llama3.1-70B":{
+                "5": 4,
+                "20": 2,
+                "40": 1
+            }
+
+        }
+    },
+    "duration":{
+        "default": 24,
+        "JHE": {
+            "default": 48,
+            "DyGIEpp": 8,
+            "Qwen3.5-9B": 48,
+            "Qwen3.5-27B": 48,
+            "gemma4-E4B": 48,
+            "gemma4-26B": 48
+        },
+        "IHE": {
+            "default": 48,
+            "DyGIEpp": 8,
+            "Qwen3.5-9B": 48,
+            "Qwen3.5-27B": 48,
+            "gemma4-E4B": 48,
+            "gemma4-26B": 48
+        }
+    },
+    "gpu_requirements":{
+        "default": "a100",
+        "gemma4-26B": {
+            "default": "a100",
+            "40": "a40"
+        },
+        "gemma4-E4B" : {
+            "default": "a40"
+        },
+        "Qwen3.5-9B" : "a100",
+        "Qwen3.5-27B": "a100",
+        "TagPrime-C": "a100",
+        "TagPrime-CR": "a100",
+        "Llama3.1-70B": "h100"
+    },
+    "gpu_partition":{
+        "default": "gpu",
+        "grace":{
+            "a40": "gpu-a40"
+        },
+        "aces":{
+            "h100": "gpu"
+        }
+    },
+    "gpu_mappings":{
+        "default": [0],
+        "Llama-3.2-90B": [0,1],
+        "Mixtral-8x7B": [0,1],
+        "Llama-3.2-11B": [0,1],
+        "JHE": {
+            "Qwen3.5-9B": {
+                "default": [0]
+            },
+            "Qwen3.5-27B": {
+                "default": [0,1]
+            },
+            "gemma4-26B": {
+                "default": [0,1],
+                "40": [0,1,2]
+            },
+            "Llama3.1-70B": {
+                "default": [0,1]
+            }
+        },
+        "IHE": {
+            "Qwen3.5-9B": {
+                "default": [0]
+            },
+            "Qwen3.5-27B": {
+                "default": [0,1]
+            },
+            "gemma4-26B": {
+                "default": [0,1],
+                "40": [0,1,2]
+            },
+            "Llama3.1-70B": {
+                "default": [0,1]
+            }
+        }
+    }
+}

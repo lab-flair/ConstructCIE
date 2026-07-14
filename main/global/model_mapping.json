@@ -1,0 +1,111 @@
+{
+    "few_shots": {
+        "default": {
+            "sizes": [2, 4, 8, 16, 32],
+            "min": [2, 4, 8, 16, 32]
+        },
+        "JHE": {
+            "sizes": [0, 5, 10, 20, 30, 40],
+            "min": [0, 1, 6, 11, 21, 31]
+        },
+        "IHE": {
+            "sizes": [0, 5, 10, 20, 30, 40],
+            "min": [0, 1, 6, 11, 21, 31]
+        }
+    },
+    "max_output_length": 1024,
+    "model_max_length": 4096,
+    "model_alts":{
+        "Llama3.2-3B": "Llama-3.2-3B-Instruct",
+        "Llama3.2-11B": "Llama-3.2-11B-Vision-Instruct",
+        "Llama3.2-90B": "Llama-3.2-90B-Vision-Instruct",
+        "Llama3.1-70B": "Llama-3.1-70B-Instruct",
+        "Zephyr-7B": "zephyr-7b-alpha",
+        "Mixtral-8x7B":"Mixtral-8x7B-Instruct-v0.1",
+        "Qwen3.5-9B": "Qwen3.5-9B",
+        "gemma4-E4B": "gemma-4-E4B-it",
+        "gemma4-26B": "gemma-4-26B-A4B-it",
+        "Qwen3.5-27B": "Qwen3.5-27B",
+        "DyGIEpp":         "DyGIEpp",
+        "OneIE":           "OneIE",
+        "AMRIE":           "AMRIE",
+        "EEQA":            "EEQA",
+        "RCEE":            "RCEE",
+        "QueryAndExtract": "QueryAndExtract",
+        "TagPrime":        "TagPrime",
+        "TagPrime-C":      "TagPrime-C",
+        "TagPrime-CR":     "TagPrime-CR",
+        "Degree":          "Degree",
+        "BartGen":         "BartGen",
+        "XGear":           "XGear",
+        "PAIE":            "PAIE",
+        "Ampere":          "Ampere",
+        "roberta-large":       "roberta-large",
+        "facebook/bart-large": "bart-large"
+    },
+    "gpu_partition":{
+        "default": "gpu",
+        "grace":{
+            "a40": "gpu-a40"
+        },
+        "aces":{
+            "h100": "gpu_debug"
+        }
+    },
+    "span_mode": {
+        "default":         "individual",
+        "Degree":          "individual",
+        "BartGen":         "joint",
+        "XGear":           "individual",
+        "Ampere":          "joint"
+    },
+    "dataset_alts":{
+        "ace05": "ace05-en",
+        "casie": "casie",
+        "ere": "richere-en",
+        "fewevent": "fewevent",
+        "geneva": "geneva",
+        "genia2011": "genia2011",
+        "genia2013": "genia2013",
+        "m2e2": "m2e2",
+        "maven": "maven",
+        "mee": "mee-en",
+        "mlee": "mlee",
+        "muc4": "muc4",
+        "phee": "phee",
+        "rams": "rams",
+        "speed": "speed",
+        "wikievents": "wikievents",
+        "accd": "accd",
+        "constructcie" : "constructcie",
+        "constee0" : "constee0"
+        
+    },
+    "skip_columns": {
+        "default": ["accident_report", "id"],
+        "JHE": ["accident_report", "id"],
+        "IHE": ["accident_report", "id"]
+    },
+    "model_type":{
+        "supervised": ["DyGIEpp", "OneIE", "AMRIE", "Degree", "EEQA", "RCEE", "QueryAndExtract", "TagPrime-C", "TagPrime-CR", "BartGen", "XGear", "PAIE", "Ampere"],
+        "LLM": ["Zephyr-7B", "Mixtral-8x7B", "Qwen3.5-9B", "gemma4-E4B", "gemma4-26B", "Qwen3.5-27B", "Llama3.2-3B", "Llama3.2-11B", "Llama3.1-70B"]
+    },
+    "task_mapping":{
+        "dataset":{
+            "EAE": ["ace05", "ere", "mlee", "genia2011", "genia2013", "m2e2", "casie", "phee", "wikievents", "rams", "muc4", "geneva"],
+            "ED": ["ace05", "ere", "mlee", "genia2011", "genia2013", "m2e2", "casie", "phee", "maven", "fewevent", "speed", "mee"],
+            "E2E": ["ace05", "ere", "mlee", "genia2011", "genia2013", "m2e2", "casie", "phee"],
+            "JHE": ["constructcie", "constee0"],
+            "IHE": ["constructcie", "constee0"]
+        },
+        "model":{
+            "EAE": ["Llama-3.2-11B", "Llama-3.2-90B", "Zephyr-7B", "Mixtral-8x7B", "Qwen3.5-9B",
+                    "EEQA", "RCEE", "QueryAndExtract", "TagPrime", "Degree", "PAIE", "XGear", "BartGen", "Ampere"],
+            "ED":  ["Llama-3.2-11B", "Llama-3.2-90B", "Zephyr-7B", "Mixtral-8x7B", "Qwen3.5-9B",
+                    "EEQA", "RCEE", "QueryAndExtract", "TagPrime", "Degree"],
+            "E2E": ["DyGIEpp", "OneIE", "Degree", "AMRIE"],
+            "JHE": ["Qwen3.5-9B", "Qwen3.5-27B", "Llama3.2-3B", "Llama3.2-11B", "Llama3.1-70B", "TagPrime-C", "TagPrime-CR"],
+            "IHE": ["Qwen3.5-9B", "Qwen3.5-27B", "Llama3.2-3B", "Llama3.2-11B", "Llama3.1-70B"]
+        }
+    }
+}

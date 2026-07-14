@@ -1,0 +1,44 @@
+{
+    "pretrained_model_name": "roberta-large",
+    "max_length": 512,
+    "train_batch_size": 4,
+    "eval_batch_size": 8,
+    "accumulate_step": 1,
+    "grad_clipping": 1.0,
+    "base_model_learning_rate": 2e-5,
+    "base_model_weight_decay": 1e-5,
+    "learning_rate": 1e-4,
+    "weight_decay": 1e-5,
+    "warmup_epoch": 3,
+    "max_epoch": 50,
+    "base_model_dropout": 0.1,
+    "linear_dropout": 0.4,
+    "linear_hidden_num": 150,
+    "linear_bias": true,
+    "linear_activation": "relu",
+    "multi_piece_strategy": "average",
+    "use_crf": true,
+    "priming_type": "condition",
+    "tag_correction": false,
+    "tag_correction_max_gap": 1,
+    "ac_predict_mode": "hierarchical",
+    "early_stop_epochs": 10,
+    "group_weight": [
+        {
+            "roles": ["body_part", "object", "consq", "work_ctx"],
+            "weight": 1.0
+        },
+        {
+            "roles": ["cond_factor", "equip_factor", "human_factor", "site_cond", "tool_cond", "violation"],
+            "weight": 1.0
+        },
+        {
+            "roles": ["inattention", "weather", "haz_id_fail", "ppe_cond", "mgmt_factor"],
+            "weight": 1.0
+        },
+        {
+            "roles": ["train_gap"],
+            "weight": 1.0
+        }
+    ]
+}

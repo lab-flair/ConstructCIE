@@ -1,0 +1,83 @@
+ {
+    "structure": {
+        "source":[
+            "id", "accident_report", "accident_type"
+        ],
+        "accident_report": [
+            "working_circumstances", "managerial_factors", "working_condition_factors", "equipment_factors", "behavioral_factors", "consequences", "object_involved"
+        ],
+        "working_circumstances": [
+            "construction_trade"
+        ],
+        "managerial_factors": [
+            "failure_of_hazard_management", "deficiency_in_safety_training"
+        ],
+        "working_condition_factors": [
+            "weather_condition", "workspace_condition"
+        ],
+        "equipment_factors": [
+            "protective_equipment_condition", "work_equipment_condition"
+        ],
+        "behavioral_factors": [
+            "inattentive_behavior", "noncompliant_behavior"
+        ],
+        "consequences": [
+            "severity", "affected_body_part"
+        ]
+    },
+    "task": {
+        "classification": {
+            "columns": ["construction_trade", "severity", "accident_type"],
+            "classes": {
+                "construction_trade": [
+                    "concrete", "earthwork", "electrical", "equipment", "existing conditions",
+                    "exterior improvements", "finishes", "general requirements", "heating, ventilating, and air conditioning (hvac)", "masonry", "metals",
+                    "openings", "plumbing", "special construction", "thermal and moisture protection", "utilities", "wood, plastics, and composites"
+                ],
+                "severity": [
+                    "fatality", "hospitalized injury", "non hospitalized injury"
+                ],
+                "accident_type": [
+                    "caught-in/between", "electrocution", "fall", "struck-by"
+                ]
+            },
+            "class_alias": {
+
+            }
+        },
+        "extraction": {
+            "columns": ["working_circumstances", "managerial_factors", "working_condition_factors", "equipment_factors", "behavioral_factors", "consequences", "object_involved"]
+        },
+        "default": {
+            "columns": ["id", "accident_report", "accident_type"]
+        }
+    },
+    "alias":{
+        "Nr.": "id",
+        "Accident Report": "accident_report",
+        "Accident Type": "accident_type",
+        "Working Circumstances": "working_circumstances",
+        "Managerial Factors": "managerial_factors",
+        "Working Condition Factors": "working_condition_factors",
+        "Equipment Factors": "equipment_factors",
+        "Behavioral Factors": "behavioral_factors",
+        "Consequences": "consequences",
+        "Construction Trade": "construction_trade",
+        "Object Involved": "object_involved",
+        "Failure of Hazard Management": "failure_of_hazard_management",
+        "Deficiency in Safety Training": "deficiency_in_safety_training",
+        "Weather Condition": "weather_condition",
+        "Workspace Condition": "workspace_condition",
+        "Protective Equipment Condition": "protective_equipment_condition",
+        "Work Equipment Condition": "work_equipment_condition",
+        "Inattentive Behavior": "inattentive_behavior",
+        "Noncompliant Behavior": "noncompliant_behavior",
+        "Severity": "severity",
+        "Affected Body Part": "affected_body_part",
+
+        "default": "text"
+    },
+    "id_filter":[
+
+    ]
+}

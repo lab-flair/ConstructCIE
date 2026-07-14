@@ -1,0 +1,36 @@
+caught_in_between_work_ctx,What is the working circumstances?
+caught_in_between_mgmt_factor,What is the managerial factors?
+caught_in_between_cond_factor,What is the working condition factors?
+caught_in_between_equip_factor,What is the equipment factors?
+caught_in_between_human_factor,What is the behavioral factors?
+caught_in_between_consq,What is the consequences?
+cond_factor_weather,What is the weather condition?
+cond_factor_site_cond,What is the workspace condition?
+consq_severity,What is the severity?
+consq_body_part,What is the affected body part?
+electrocution_work_ctx,What is the working circumstances?
+electrocution_mgmt_factor,What is the managerial factors?
+electrocution_cond_factor,What is the working condition factors?
+electrocution_equip_factor,What is the equipment factors?
+electrocution_human_factor,What is the behavioral factors?
+electrocution_consq,What is the consequences?
+equip_factor_ppe_cond,What is the protective equipment condition?
+equip_factor_tool_cond,What is the work equipment condition?
+fall_work_ctx,What is the working circumstances?
+fall_mgmt_factor,What is the managerial factors?
+fall_cond_factor,What is the working condition factors?
+fall_equip_factor,What is the equipment factors?
+fall_human_factor,What is the behavioral factors?
+fall_consq,What is the consequences?
+human_factor_inattention,What is the inattentive behavior?
+human_factor_violation,What is the noncompliant behavior?
+mgmt_factor_haz_id_fail,What is the failure of hazard management?
+mgmt_factor_train_gap,What is the deficiency in safety training?
+struck_by_work_ctx,What is the working circumstances?
+struck_by_mgmt_factor,What is the managerial factors?
+struck_by_cond_factor,What is the working condition factors?
+struck_by_equip_factor,What is the equipment factors?
+struck_by_human_factor,What is the behavioral factors?
+struck_by_consq,What is the consequences?
+work_ctx_task,What is the construction trade?
+work_ctx_object,What is the object involved?

@@ -1,0 +1,117 @@
+
+{
+    "few_shot_buckets": {
+        "default": [1,1],
+        "JHE": {
+            "gemma4-26B": [4,4]
+        },
+        "IHE": {
+            "gemma4-26B": [4,4]
+        }
+    },
+    "few_shot_weights":{
+        "default": 0,
+        "JHE": {
+            "gemma4-26B": {
+                "0": 15.0,
+                "5": 17.5,
+                "10": 20.0,
+                "20": 20.0,
+                "30": 22.5,
+                "40": 25.0
+            }
+        },
+        "IHE": {
+            "gemma4-26B": {
+                "0": 7.5,
+                "5": 7.5,
+                "10": 7.5,
+                "20": 10.0,
+                "30": 10.0,
+                "40": 10.0
+            }
+        }
+    },
+    "eval_batch_size": {
+        "default": 8,
+        "JHE":{
+            "DyGIEpp": 8,
+            "Qwen3.5-9B": {
+                "default": 8,
+                "40": 4
+            }
+        }
+    },
+    "duration":{
+        "default": 8,
+        "JHE": {
+            "default": 24,
+            "DyGIEpp": 8,
+            "gemma4-E4B": 48,
+            "gemma4-26B": 48
+        },
+        "IHE": {
+            "default": 24,
+            "DyGIEpp": 8,
+            "gemma4-E4B": 48,
+            "gemma4-26B": 48
+        }
+    },
+    "gpu_requirements":{
+        "default": "a100",
+        "gemma4-26B": "h100",
+        "Qwen3.5-27B": "h100",
+        "Llama3.1-70B": "h100"
+    },
+    "gpu_partition":{
+        "default": "gpu",
+        "grace":{
+            "a40": "gpu-a40"
+        }
+    },
+    "gpu_mappings":{
+        "default": [0],
+        "Llama-3.2-90B": [0,1],
+        "Mixtral-8x7B": [0,1],
+        "Llama-3.2-11B": [0,1],
+        "JHE": {
+            "Qwen3.5-9B": {
+                "30": [0,1]
+            },
+            "Qwen3.5-27B": {
+                "20": [0,1]
+            },
+            "gemma4-26B":{
+                "20": [0,1]
+            },
+            "Llama3.1-70B": {
+                "default": [0,1]
+            }
+        },
+        "IHE": {
+            "Qwen3.5-9B": {
+                "30": [0,1]
+            },
+            "Qwen3.5-27B": {
+                "20": [0,1]
+            },
+            "gemma4-26B":{
+                "20": [0,1]
+            },
+            "Llama3.1-70B": {
+                "default": [0,1]
+            }
+        }
+    },
+    "ac_similarity_threshold": 0.8,
+    "eval_norm": true,
+    "skip_threshold": {
+        "default": 0.0,
+        "JHE": {
+            "default": 0.0
+        },
+        "IHE": {
+            "default": 0.0
+        }
+    }
+}

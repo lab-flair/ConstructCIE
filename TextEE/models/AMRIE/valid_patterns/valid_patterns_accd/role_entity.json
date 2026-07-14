@@ -1,0 +1,56 @@
+{
+  "body_part": [
+    "UNK"
+  ],
+  "cond_factor": [
+    "UNK"
+  ],
+  "consq": [
+    "UNK"
+  ],
+  "equip_factor": [
+    "UNK"
+  ],
+  "haz_id_fail": [
+    "UNK"
+  ],
+  "human_factor": [
+    "UNK"
+  ],
+  "inattention": [
+    "UNK"
+  ],
+  "mgmt_factor": [
+    "UNK"
+  ],
+  "object": [
+    "UNK"
+  ],
+  "ppe_cond": [
+    "UNK"
+  ],
+  "severity": [
+    "UNK"
+  ],
+  "site_cond": [
+    "UNK"
+  ],
+  "task": [
+    "UNK"
+  ],
+  "tool_cond": [
+    "UNK"
+  ],
+  "train_gap": [
+    "UNK"
+  ],
+  "violation": [
+    "UNK"
+  ],
+  "weather": [
+    "UNK"
+  ],
+  "work_ctx": [
+    "UNK"
+  ]
+}
