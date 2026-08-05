@@ -90,6 +90,21 @@ class LLMACTrainer(LLMBaseTrainer):
         main_categories = self.schema["structure"]["accident_report"]
         main_cls_keys = [k for k in main_categories if "classification" in self.schema.get("task", {}) and k in self.schema["task"]["classification"]["classes"]]
         main_ext_keys = [k for k in main_categories if k not in main_cls_keys]
+        # `acc_txt_cls` also backs Stage 0's accident_type prediction for
+        # E2AC/E2AC1 (LLME2ACTrainer/LLME2AC1Trainer predict accident_type
+        # from doc text before any other stage). accident_type is a
+        # doc-level classification target but isn't itself a member of
+        # `main_categories` (it's accident_report's sibling in `structure`,
+        # not a child), so it never landed in main_cls_keys — meaning the
+        # acc_txt_cls cache slot was never built for schemas (like this
+        # one) with no OTHER main-level classification factor, and Stage 0
+        # ran zero-shot at every k regardless of --few-shot. Fold it in
+        # here so its examples scale with few_shot_size like every other
+        # classification stage.
+        classification_classes = self.schema.get("task", {}).get("classification", {}).get("classes", {})
+        acc_txt_cls_keys = list(main_cls_keys)
+        if "accident_type" in classification_classes and "accident_type" not in acc_txt_cls_keys:
+            acc_txt_cls_keys.append("accident_type")
 
         def get_val(ex, key):
             val = ex.get(key)
@@ -174,9 +189,9 @@ class LLMACTrainer(LLMBaseTrainer):
             if main_ext_keys:
                 sub["accident_report"] = _build_with_fallback(
                     typed_data, all_data, main_ext_keys, "accident_report")
-            if main_cls_keys:
+            if acc_txt_cls_keys:
                 sub["acc_txt_cls"] = _build_with_fallback(
-                    typed_data, all_data, main_cls_keys, "accident_report")
+                    typed_data, all_data, acc_txt_cls_keys, "accident_report")
             for parent_key in main_categories:
                 sub_keys = self.schema["structure"].get(parent_key, [])
                 if not sub_keys:

@@ -65,9 +65,11 @@ def make_run_id(prefix="log"):
 _PUNCT_RE = re.compile(r"[^\w\s]")
 _WS_RE = re.compile(r"\s+")
 
-# `accident_report` / `accident_type` come via skip_columns from the global
-# mapping (task-level choice). Only IE-format structural leftovers + `doc_id`
-# are hardcoded here so they're never treated as factors during analysis.
+# Structural columns (`accident_report`, `id`) are excluded via the global
+# config's `skip_columns` (base_skip), and classification columns
+# (`accident_type`, ...) via the key map's classification classes — both
+# resolved in analyze_combination. Only IE-format structural leftovers +
+# `doc_id` are hardcoded here so they're never treated as factors.
 IGNORE_KEYS = {"doc_id", "tokens", "event_mentions"}
 
 
@@ -667,8 +669,8 @@ def _analyze_split_worker(args):
 def analyze_combination(out_path, model, dataset, task, gold_root, structure,
                         sim_threshold=0.8, splits=None, shots=None, log_dir=None,
                         classes_map=None, auto_subdir=False, write_compare=False,
-                        skip_factors_by_shot=None, norm=False, variant="",
-                        max_workers=None):
+                        skip_factors_by_shot=None, base_skip=None,
+                        norm=False, variant="", max_workers=None):
     """Run error analysis for one (model, dataset, task) across all splits per k.
 
     `classes_map`, when provided, supplies the acc_type enum used to detect
@@ -695,6 +697,17 @@ def analyze_combination(out_path, model, dataset, task, gold_root, structure,
     each shot count — matches the skip vector LLM evaluation applies via
     `skip_threshold`. Recorded into the top-level output JSON as
     `skip_factors` for traceability.
+
+    `base_skip` is the task-level `skip_columns` list from the global
+    config (structural columns like `accident_report` / `id`). Together
+    with the key map's classification columns (`classes_map` keys) it is
+    excluded uniformly for every model and shot, keeping the error
+    taxonomy extraction-only.
+
+    Pred files are matched by their canonical `pred_*_<dataset>_<task>_
+    split{N}_k{K}.json` name. If a (model, dataset, task) combination
+    matches no pred files at all, `analyze_combination` raises rather than
+    silently returning an empty result.
 
     Returns the list of written errors_*.json paths.
     """
@@ -727,7 +740,8 @@ def analyze_combination(out_path, model, dataset, task, gold_root, structure,
         # which we don't have here. out_path is already model-scoped so we
         # don't need to over-constrain on the file's model prefix.
         shot_pat = re.compile(
-            rf"^pred_.+_{re.escape(dataset)}_{re.escape(task_lc)}_split\d+_k(\d+)\.json$"
+            rf"^pred_.+_{re.escape(dataset)}_{re.escape(task_lc)}"
+            rf"_split\d+_k(\d+)\.json$"
         )
         shot_set = set()
         for f in os.listdir(out_path):
@@ -737,53 +751,37 @@ def analyze_combination(out_path, model, dataset, task, gold_root, structure,
         shots = sorted(shot_set)
 
     skip_map = skip_factors_by_shot or {}
-    # NER-only supervised trainers can't emit classification columns via
-    # entity_mentions. Adding those keys to skip_factors keeps the gold-side
-    # iteration honest — without this, every gold task/severity span sits in
-    # the unclassified bucket because no pred can ever match it.
-    # `accident_type` is omitted because the global mapping's task-level
-    # `skip_columns` already controls whether it counts as a factor.
-    cls_skip = (
-        sorted(k for k in classes_map.keys() if k != "accident_type")
-        if classes_map else []
-    )
+    # Uniform skip set, identical for every model family:
+    #   * `base_skip` — task-level `skip_columns` from the global config
+    #     (structural columns like `accident_report` / `id`).
+    #   * classification columns from the key map (`classes_map` keys) —
+    #     the error taxonomy is extraction-only. Classification factors are
+    #     closed-vocabulary labels, so their misses would all land in
+    #     `hallucination`/`omission` as an artifact of the substring checks.
+    #     Every trainer emits them nowadays (TagPrime included), hence no
+    #     per-format sniffing or special-casing.
+    always_skip = set(base_skip or ()) | set(classes_map or ())
     # Build the (k, split, pred_path, gold_path, ...) work items in the main
-    # process — file sniffing and skip-factor resolution are cheap and let
-    # workers stay narrowly scoped to "analyze every record in one chunk".
+    # process — skip-factor resolution is cheap and lets workers stay
+    # narrowly scoped to "analyze every record in one chunk".
     shot_skip = {}      # k -> resolved skip_factors list
     work_items = []
+    pred_matches_found = 0
     for k in shots:
         skip_factors = list(skip_map.get(k, ()) or skip_map.get(str(k), ()) or ())
-        # Sniff the first matching split to decide whether this shot's pred
-        # files are IE-format (supervised); when they are, add cls_skip on
-        # top so supervised gold rows stop being penalized.
-        is_supervised_shot = False
-        if cls_skip:
-            for split in splits:
-                pat = os.path.join(out_path,
-                                   f"pred_*_{dataset}_{task_lc}_split{split}_k{k}.json")
-                matches = glob.glob(pat)
-                if not matches:
-                    continue
-                try:
-                    head = _load_jsonl(matches[0])[:1]
-                except Exception:
-                    head = []
-                if head and ("entity_mentions" in head[0] or "event_mentions" in head[0]):
-                    is_supervised_shot = True
-                break
-        if is_supervised_shot:
-            skip_factors = sorted(set(skip_factors) | set(cls_skip))
+        skip_factors = sorted(set(skip_factors) | always_skip)
         shot_skip[k] = skip_factors
 
         for split in splits:
-            pattern = os.path.join(
-                out_path,
-                f"pred_*_{dataset}_{task_lc}_split{split}_k{k}.json",
-            )
-            matches = glob.glob(pattern)
+            matches = glob.glob(os.path.join(
+                out_path, f"pred_*_{dataset}_{task_lc}_split{split}_k{k}.json"))
             if not matches:
+                # Expected for shots a model didn't produce (e.g. supervised
+                # models only ever have k=0) — not an error by itself. The
+                # check below after the loop catches the case that matters:
+                # the canonical name matching NOTHING anywhere.
                 continue
+            pred_matches_found += 1
             pred_path = matches[0]
             gold_path = os.path.join(gold_root, dataset, f"split{split}", "test.json")
             if not os.path.exists(gold_path):
@@ -792,6 +790,15 @@ def analyze_combination(out_path, model, dataset, task, gold_root, structure,
             work_items.append((k, split, pred_path, gold_path,
                                 structure, classes_map, sim_threshold, norm,
                                 skip_factors))
+
+    if shots and splits and not pred_matches_found:
+        raise FileNotFoundError(
+            f"analyze_combination: no pred_*.json files matched for "
+            f"model={model!r} dataset={dataset!r} task={task!r} under "
+            f"canonical filename tokens dataset={dataset!r} "
+            f"task={task_lc!r} in {out_path!r} "
+            f"(tried shots={shots}, splits={splits})."
+        )
 
     # Run the per-(shot, split) chunks in parallel, then group reports by
     # shot. Falls back to serial when there's nothing to parallelize.
@@ -1311,7 +1318,30 @@ def _aggregate_per_model(runs):
     return per_model
 
 
-def _render_by_model_summary_latex(runs, model_aliases=None):
+def _ordered_present(model_order, present):
+    """Order `present` model keys by their position in `model_order` (e.g.
+    `list(model_alts.keys())` from the global config), appending any not
+    found there in ascending name order. Keeps row order sourced from the
+    same config the short display names come from, instead of a second
+    hardcoded ordering."""
+    order = list(model_order or ())
+    present = set(present)
+    ordered = [m for m in order if m in present]
+    ordered += sorted(m for m in present if m not in order)
+    return ordered
+
+
+def _by_model_row_order(per_model, supervised_models=None):
+    """Row order for the by-model tables: supervised models first, then
+    LLMs, each group in ascending name order. Group membership comes from
+    the global mapping's `model_type.supervised` list (threaded down from
+    run.py); when it's absent the order degrades to plain alphabetical."""
+    sup = set(supervised_models or ())
+    return sorted(per_model.keys(), key=lambda m: (0 if m in sup else 1, m.lower()))
+
+
+def _render_by_model_summary_latex(runs, model_aliases=None,
+                                   supervised_models=None):
     """LaTeX twin of `_render_by_model_summary`. Same aggregation, same
     column layout, but rendered as a booktabs table* block suitable for a
     paper. Returns the empty string when there's nothing to show.
@@ -1336,7 +1366,7 @@ def _render_by_model_summary_latex(runs, model_aliases=None):
         r"& \textbf{F1} \\",
         r"\midrule",
     ]
-    for m in sorted(per_model.keys()):
+    for m in _by_model_row_order(per_model, supervised_models):
         b = per_model[m]
         totals_lines.append(" & ".join([
             _esc_latex_err(_err_disp_model(m, model_aliases)),
@@ -1379,7 +1409,7 @@ def _render_by_model_summary_latex(runs, model_aliases=None):
         r"& \textbf{joined} & \textbf{mislabel} & \textbf{mis} \\",
         r"\midrule",
     ]
-    for m in sorted(per_model.keys()):
+    for m in _by_model_row_order(per_model, supervised_models):
         b = per_model[m]
         # Denominator = THIS model's total error count over the six main
         # pred-side categories. Each cell shows its share of that model's
@@ -1409,6 +1439,89 @@ def _render_by_model_summary_latex(runs, model_aliases=None):
     return "\n".join(totals_lines + [""] + comp_lines)
 
 
+def _render_grouped_composition_latex(runs, model_order=None, model_aliases=None,
+                                      supervised_models=None, caption=None,
+                                      label="tab:error"):
+    """Single error-composition table with three row blocks: Supervised
+    Models, then LLMs run under JHE, then LLMs run under IHE.
+
+    Unlike `_render_by_model_summary_latex` (which pools every task
+    together per model), this keeps JHE and IHE numbers separate per model
+    — the same model can have very different failure profiles on the two
+    tasks, so merging them would hide that.
+
+    `model_order`, when provided, is the row/display order — pass
+    `list(model_alts.keys())` from the global config so ordering comes
+    from the same source of truth as the short names (`model_aliases`),
+    instead of a second hardcoded list here.
+    """
+    if not runs:
+        return ""
+    sup = set(supervised_models or ())
+
+    sup_runs, jhe_runs, ihe_runs = [], [], []
+    for d in runs:
+        m = d.get("model", "")
+        task_lc = str(d.get("task", "")).lower()
+        if m in sup:
+            sup_runs.append(d)
+        elif task_lc == "jhe":
+            jhe_runs.append(d)
+        elif task_lc == "ihe":
+            ihe_runs.append(d)
+
+    sections = [
+        ("Supervised Models", _aggregate_per_model(sup_runs)),
+        ("Joint Hierarchical Extraction (JHE)", _aggregate_per_model(jhe_runs)),
+        ("Individual Hierarchical Extraction (IHE)", _aggregate_per_model(ihe_runs)),
+    ]
+    sections = [(title, per_model) for title, per_model in sections if per_model]
+    if not sections:
+        return ""
+
+    lines = [
+        r"\begin{table}[t]",
+        r"\centering",
+        r"\scriptsize",
+        r"\setlength{\tabcolsep}{2pt}",
+        r"\renewcommand{\arraystretch}{1.05}",
+        r"\resizebox{\columnwidth}{!}{%",
+        r"\begin{tabular}{lrrrrrr}",
+        r"\toprule",
+        r"\textbf{Model}",
+        r"& \textbf{Over}",
+        r"& \textbf{Under}",
+        r"& \textbf{Halluc.}",
+        r"& \textbf{Joined}",
+        r"& \textbf{Mis-la}",
+        r"& \textbf{Mis-ex} \\",
+    ]
+    for title, per_model in sections:
+        lines.append(r"\midrule")
+        lines.append(rf"\multicolumn{{7}}{{l}}{{\textbf{{{title}}}}} \\")
+        for m in _ordered_present(model_order, per_model.keys()):
+            b = per_model[m]
+            d = _row_error_total(b)
+            lines.append(_esc_latex_err(_err_disp_model(m, model_aliases)))
+            lines.append("& " + " & ".join([
+                _pct_only(b["over_ext"],  d),
+                _pct_only(b["under_ext"], d),
+                _pct_only(b["halluc"],    d),
+                _pct_only(b["joined"],    d),
+                _pct_only(b["mislabel"],  d),
+                _pct_only(b["mis_ext"],   d),
+            ]) + r" \\")
+    lines += [
+        r"\bottomrule",
+        r"\end{tabular}}",
+        r"\caption{" + (caption or "Exact-match error distributions by "
+                         "extraction strategy.") + "}",
+        rf"\label{{{label}}}",
+        r"\end{table}",
+    ]
+    return "\n".join(lines)
+
+
 # Error-type columns shown in the by-model summary AND summed as the
 # per-row denominator. Only the six "main" pred-side error categories are
 # kept so the row percentages add up to 100% — answering "among the model's
@@ -1427,7 +1540,7 @@ def _row_error_total(b):
     return sum(b.get(k, 0) for k in _BY_MODEL_ERROR_KEYS)
 
 
-def _render_by_model_summary(runs):
+def _render_by_model_summary(runs, supervised_models=None):
     """Two-table aggregate:
 
     1. BY-MODEL SUMMARY — rows = unique models, cols = the six main
@@ -1446,7 +1559,7 @@ def _render_by_model_summary(runs):
     # --- 1. BY-MODEL TOTALS — counts only ---
     totals_headers = ["model", "runs", "pred", "gold", "f1_match"]
     totals_rows = []
-    for m in sorted(per_model.keys()):
+    for m in _by_model_row_order(per_model, supervised_models):
         b = per_model[m]
         totals_rows.append([
             m, b["n_runs"], b["pred"], b["gold"],
@@ -1470,7 +1583,7 @@ def _render_by_model_summary(runs):
     headers = ["model", "over", "under", "halluc", "joined",
                "mislabel", "mis"]
     rows = []
-    for m in sorted(per_model.keys()):
+    for m in _by_model_row_order(per_model, supervised_models):
         b = per_model[m]
         d = _row_error_total(b)
         rows.append([
@@ -1490,7 +1603,7 @@ def _render_by_model_summary(runs):
     return totals_table + "\n" + composition_table
 
 
-def aggregate_tables(json_paths, label_fn=_run_label):
+def aggregate_tables(json_paths, label_fn=_run_label, supervised_models=None):
     """Build comparison tables across multiple errors_*.json bundles.
 
     Returns a single multi-line text block. Natural use is "across k for one
@@ -1532,7 +1645,7 @@ def aggregate_tables(json_paths, label_fn=_run_label):
     # gold_count; corruption uses pred_count (diagnostic). Lives at the top
     # because most readers want the model-vs-model headline before drilling
     # into per-(kshot, task) breakdowns.
-    sections.append(_render_by_model_summary(runs))
+    sections.append(_render_by_model_summary(runs, supervised_models))
 
     # 1. OVERALL — three tables to keep denominators coherent:
     #    a) pred-side F1 attribution + f1_match  (share of pred)
@@ -1800,16 +1913,26 @@ def aggregate_tables(json_paths, label_fn=_run_label):
     return "\n".join(s for s in sections if s)
 
 
-def write_comparison_log(json_paths, log_path, model_aliases=None):
-    """Split `json_paths` by dataset and write one independent comparison
-    log (+ sibling `.tex`) per dataset, to `<log_path>` with the dataset
-    name inserted before the extension (e.g. `compare_all_constee.log`).
+def write_comparison_log(json_paths, log_path, model_aliases=None,
+                         supervised_models=None):
+    """Split `json_paths` by (dataset, task) and write one independent
+    comparison log (+ sibling `.tex`) per pair, to `<log_path>` with the
+    dataset and task inserted before the extension (e.g.
+    `compare_Llama3.2-3B_constructcie_jhe.log`).
 
-    Splitting first matters because `aggregate_tables`' BY-MODEL SUMMARY
-    and TOTAL rows roll counts up across every run it's given — without
-    the split, a model evaluated on two datasets would have its error
-    counts silently summed together into one misleading row/total instead
-    of two independent ones.
+    This is the single-combo variant `analyze_combination` calls for its
+    own `write_compare` (cross-k-shot log for one model/dataset/task) — for
+    that caller `json_paths` only ever spans one (dataset, task) pair, so
+    the split is a no-op there and this just names the file. For a
+    multi-model, multi-dataset sweep, use `write_aggregate_comparison_log`
+    instead, which nests output per dataset the way `-a analysis` does
+    rather than suffixing one flat filename.
+
+    Splitting matters in the general case because `aggregate_tables`' BY-
+    MODEL SUMMARY and TOTAL rows roll counts up across every run given to
+    them, with no awareness of dataset or task — without the split, a model
+    run under both JHE and IHE would have its error counts silently summed
+    together into one misleading row/total instead of kept independent.
 
     `model_aliases` is the same map data_analyzer uses ({full_name ->
     short_alias}); passing it from `run.py` keeps the LaTeX labels short
@@ -1817,33 +1940,33 @@ def write_comparison_log(json_paths, log_path, model_aliases=None):
 
     Returns the list of log_paths written (empty when nothing was written).
     """
-    paths_by_dataset = {}
+    paths_by_key = {}
     for p in json_paths:
         try:
             with open(p, "r", encoding="utf-8") as f:
-                dataset = json.load(f).get("dataset", "")
+                data = json.load(f)
+                dataset = data.get("dataset", "")
+                task = str(data.get("task", "")).lower()
         except Exception as exc:
             logger.warning("could not read %s: %s", p, exc)
             continue
-        paths_by_dataset.setdefault(dataset, []).append(p)
+        paths_by_key.setdefault((dataset, task), []).append(p)
 
     written = []
-    for dataset_key in sorted(paths_by_dataset):
-        sub_paths = paths_by_dataset[dataset_key]
-        text = aggregate_tables(sub_paths)
+    root, ext = os.path.splitext(log_path)
+
+    for dataset_key, task_key in sorted(paths_by_key):
+        sub_paths = paths_by_key[(dataset_key, task_key)]
+        text = aggregate_tables(sub_paths, supervised_models=supervised_models)
         if not text:
             continue
-        root, ext = os.path.splitext(log_path)
-        ds_log_path = f"{root}_{dataset_key}{ext}" if dataset_key else log_path
+        suffix = "_".join(s for s in (dataset_key, task_key) if s)
+        ds_log_path = f"{root}_{suffix}{ext}" if suffix else log_path
         os.makedirs(os.path.dirname(ds_log_path) or ".", exist_ok=True)
         with open(ds_log_path, "w", encoding="utf-8") as f:
             f.write(text + "\n")
         logger.warning("wrote %s", ds_log_path)
 
-        # Sibling LaTeX file with the by-model summary only. The text log
-        # holds the full sweep (per-run + per-error-type breakdowns); the
-        # LaTeX version is intended for paper inclusion, so it ships the
-        # headline table and leaves the drill-down to the .log.
         runs = []
         for p in sub_paths:
             try:
@@ -1852,13 +1975,107 @@ def write_comparison_log(json_paths, log_path, model_aliases=None):
             except Exception as exc:
                 logger.warning("could not read %s: %s", p, exc)
         if runs:
-            tex_body = _render_by_model_summary_latex(runs, model_aliases=model_aliases)
+            tex_body = _render_by_model_summary_latex(
+                runs, model_aliases=model_aliases,
+                supervised_models=supervised_models)
             if tex_body:
                 tex_path = os.path.splitext(ds_log_path)[0] + ".tex"
                 with open(tex_path, "w", encoding="utf-8") as f:
                     f.write(tex_body + "\n")
                 logger.warning("wrote %s", tex_path)
         written.append(ds_log_path)
+    return written
+
+
+def write_aggregate_comparison_log(json_paths, log_dir, model_aliases=None,
+                                   supervised_models=None, model_order=None):
+    """Write the cross-model, cross-task `-a error --aggregate` summary,
+    one dataset per subfolder — same layout `-a analysis` uses for its own
+    output (see `progress_analyzer.per_dataset_log_path`): each dataset
+    gets `<log_dir>/<dataset>/`, so two datasets never collide on the same
+    filename and every dataset's artifacts sit together.
+
+    Inside each dataset folder:
+
+    1. Plain-text `.log` — one per task (e.g. `compare_all_jhe.log`,
+       `compare_all_ihe.log`). Splitting by task here matters because
+       `aggregate_tables`' BY-MODEL SUMMARY and TOTAL rows roll counts up
+       across every run it's given, with no awareness of task — without
+       the split, a model run under both JHE and IHE would have its error
+       counts silently summed together into one misleading row/total
+       instead of kept independent.
+
+    2. LaTeX `.tex` — one `compare_all.tex` per dataset (both tasks
+       pooled into one table, via `_render_grouped_composition_latex`).
+       This is the paper-ready artifact: Supervised / JHE / IHE row
+       blocks in a single table, still keeping each model's JHE and IHE
+       numbers separate within it.
+
+    `model_aliases` is the same {full_name -> short_alias} map
+    data_analyzer uses; `model_order` is the row/display order (pass
+    `list(model_alts.keys())` from the global config) — both threaded from
+    run.py so the LaTeX output's naming and ordering come from the same
+    config source of truth instead of being hardcoded here.
+
+    Returns the list of paths written (empty when nothing was written).
+    """
+    from main.progress_analyzer import per_dataset_log_path
+
+    paths_by_key = {}
+    paths_by_dataset = {}
+    for p in json_paths:
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                dataset = data.get("dataset", "")
+                task = str(data.get("task", "")).lower()
+        except Exception as exc:
+            logger.warning("could not read %s: %s", p, exc)
+            continue
+        paths_by_key.setdefault((dataset, task), []).append(p)
+        paths_by_dataset.setdefault(dataset, []).append(p)
+
+    written = []
+
+    for dataset_key, task_key in sorted(paths_by_key):
+        sub_paths = paths_by_key[(dataset_key, task_key)]
+        text = aggregate_tables(sub_paths, supervised_models=supervised_models)
+        if not text:
+            continue
+        ds_dir = per_dataset_log_path(log_dir, dataset_key) if dataset_key else log_dir
+        os.makedirs(ds_dir, exist_ok=True)
+        fname = f"compare_all_{task_key}.log" if task_key else "compare_all.log"
+        ds_log_path = os.path.join(ds_dir, fname)
+        with open(ds_log_path, "w", encoding="utf-8") as f:
+            f.write(text + "\n")
+        logger.warning("wrote %s", ds_log_path)
+        written.append(ds_log_path)
+
+    for dataset_key in sorted(paths_by_dataset):
+        runs = []
+        for p in paths_by_dataset[dataset_key]:
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    runs.append(json.load(f))
+            except Exception as exc:
+                logger.warning("could not read %s: %s", p, exc)
+        tex_body = _render_grouped_composition_latex(
+            runs, model_order=model_order, model_aliases=model_aliases,
+            supervised_models=supervised_models,
+            caption="Exact-match error distributions by extraction "
+                    f"strategy{' on ' + dataset_key if dataset_key else ''}.",
+            label=f"tab:error-{dataset_key}" if dataset_key else "tab:error",
+        )
+        if not tex_body:
+            continue
+        ds_dir = per_dataset_log_path(log_dir, dataset_key) if dataset_key else log_dir
+        os.makedirs(ds_dir, exist_ok=True)
+        tex_path = os.path.join(ds_dir, "compare_all.tex")
+        with open(tex_path, "w", encoding="utf-8") as f:
+            f.write(tex_body + "\n")
+        logger.warning("wrote %s", tex_path)
+        written.append(tex_path)
+
     return written
 
 
@@ -1927,6 +2144,10 @@ def main():
     p.add_argument("--key_map", required=True,
                    help="Path to global_data/key_mapping.json")
     p.add_argument("--sim_threshold", type=float, default=0.8)
+    p.add_argument("--skip_columns", nargs="*", default=None,
+                   help="Task-level skip_columns from the global mapping "
+                        "(e.g. accident_report id); run.py passes these "
+                        "automatically via get_global_config")
     p.add_argument("--log_dir", default=None,
                    help="Where to write errors_*.json (default: --pred_dir)")
     p.add_argument("--log_level", default="WARNING",
@@ -1960,6 +2181,7 @@ def main():
             log_dir=args.log_dir,
             classes_map=classes_map,
             write_compare=True,
+            base_skip=args.skip_columns,
         )
         written_all.extend(written)
 

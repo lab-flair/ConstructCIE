@@ -49,30 +49,27 @@ def _collect_skip(preds_golds, skip_unions, base_skip_by_combo):
     return cross_model_skip
 
 
-_E2_TASKS = {"JHE", "IHE"}
-
-
 def _score_one_combo(args):
     """Process-pool worker: runs all three rescorings (exact / soft / keyword)
     for one (model, task, shot) combo, both on the pooled preds+golds AND
     on each split separately. Defined at module level so it pickles cleanly
     under `spawn` on Windows / macOS.
 
-    For E2-family tasks, accident_type is stripped from `factors.overall`
-    (and per_acc_type) after scoring — non-E2 variants already exclude it
-    via skip_columns, so applying the same stripping here puts every
-    overall on equal footing for cross-task averaging in the comparison
-    tables. `per_factor.accident_type` is left intact so the standalone
-    accident-type view still surfaces.
+    `factors.overall` is stripped of every classification factor from the
+    key map (`task.classification.classes` — threaded in as `strict_keys`,
+    see `_build_all_scores`), for every task, not just E2. Classification
+    factors are closed-vocabulary labels, not extraction targets, so
+    `overall` stays a consistent, extraction-only measure regardless of
+    whether a given (model, shot) happened to skip_column a factor out
+    beforehand — deterministic instead of depending on few-shot pool
+    coverage. `per_factor.<key>` is left intact for each of them, so the
+    standalone per-factor views (accident_type, etc.) still surface.
 
     `args` is a tuple — see `_build_all_scores` for the layout."""
     (key, preds, golds, per_split, skip_columns,
      strict_keys, norm, has_kw) = args
     from TextEE.scorer import (compute_AC_scores, compute_AC_keyword_scores,
                                exclude_factor_from_overall)
-
-    _, task, _ = key
-    is_e2 = task in _E2_TASKS
 
     def _score_pair(ps, gs):
         e = compute_AC_scores(ps, gs, sim_threshold=1.0,
@@ -86,11 +83,11 @@ def _score_one_combo(args):
             k = compute_AC_keyword_scores(ps, gs,
                                            skip_columns=skip_columns,
                                            strict_keys=strict_keys)
-        if is_e2:
-            exclude_factor_from_overall(e, "accident_type")
-            exclude_factor_from_overall(s, "accident_type")
+        for cls_key in strict_keys:
+            exclude_factor_from_overall(e, cls_key)
+            exclude_factor_from_overall(s, cls_key)
             if k is not None:
-                exclude_factor_from_overall(k, "accident_type")
+                exclude_factor_from_overall(k, cls_key)
         return e, s, k
 
     sc_exact, sc_soft, sc_kw = _score_pair(preds, golds)
@@ -512,9 +509,17 @@ def _chunk_factors(factors, n_chunks=2):
     return [c for c in chunks if c]
 
 
+def _metrics_for_factor(f, classification_keys):
+    """[E] only for a classification factor (soft/keyword match aren't
+    meaningful for a discrete label), else the full [E, S, K]."""
+    if f in (classification_keys or ()):
+        return _TB_METRICS[:1]
+    return _TB_METRICS
+
+
 def _print_factor_table_text(title, factors, scores_per_split, models,
                               shots, sup_map, tasks, structure, n_chunks=1,
-                              model_aliases=None):
+                              model_aliases=None, classification_keys=None):
     if not factors or not models or not tasks:
         return
     # Build (model, kshot) rows in display order. Supervised models train
@@ -538,17 +543,22 @@ def _print_factor_table_text(title, factors, scores_per_split, models,
     name_w = max(len("model"),
                  max(len(_disp(m)) for m, _ in row_keys))
     metric_w = 6
-    factor_block_w = metric_w * 3 + 2 * 2  # 3 metric cells + 2 inter-cell gaps
+
+    def _block_w(f):
+        n = len(_metrics_for_factor(f, classification_keys))
+        return metric_w * n + 2 * (n - 1)  # n cells + (n-1) inter-cell gaps
 
     print(f"\n  {title}")
     for ci, chunk in enumerate(chunks):
         header1 = (
             "model".ljust(name_w) + "  k  "
-            + "  ".join(_short(f).center(factor_block_w) for f in chunk))
+            + "  ".join(_short(f).center(_block_w(f)) for f in chunk))
         header2 = (
             " " * name_w + "     "
-            + "  ".join("  ".join(lbl.center(metric_w) for _, lbl in _TB_METRICS)
-                        for _ in chunk))
+            + "  ".join(
+                "  ".join(lbl.center(metric_w)
+                          for _, lbl in _metrics_for_factor(f, classification_keys))
+                for f in chunk))
         line = "-" * max(len(header1), len(header2))
         if ci > 0:
             print()  # visual gap between sub-tables
@@ -560,16 +570,17 @@ def _print_factor_table_text(title, factors, scores_per_split, models,
         for (m, k) in row_keys:
             if prev_model is not None and m != prev_model:
                 print("  " + "-" * len(header1))
-            cells = []
+            blocks = []
             for f in chunk:
-                for metric_key, _ in _TB_METRICS:
+                cells = []
+                for metric_key, _ in _metrics_for_factor(f, classification_keys):
                     v = _mean_factor_f1(scores_per_split, m, k, f,
                                          metric_key, tasks)
                     cells.append(_fmt_f1(v).rjust(metric_w))
+                blocks.append("  ".join(cells))
             row = (_disp(m).ljust(name_w) + " "
                    + _kshow(m, k).rjust(3) + "  "
-                   + "  ".join("  ".join(cells[i * 3:(i + 1) * 3])
-                                for i in range(len(chunk))))
+                   + "  ".join(blocks))
             print("  " + row)
             prev_model = m
         print("  " + line)
@@ -581,7 +592,8 @@ def _tex_bold(s):
 
 def _print_factor_table_latex(title, label_suffix, factors, scores_per_split,
                                models, shots, sup_map, tasks, structure,
-                               caption, n_chunks=1, model_aliases=None):
+                               caption, n_chunks=1, model_aliases=None,
+                               classification_keys=None):
     if not factors or not models or not tasks:
         return
     row_keys = []
@@ -595,35 +607,35 @@ def _print_factor_table_latex(title, label_suffix, factors, scores_per_split,
     if not row_keys:
         return
     chunks = _chunk_factors(factors, n_chunks=n_chunks)
-    n_metrics = len(_TB_METRICS)
     def _disp(m): return _display_model(m, model_aliases)
     def _kshow(m, k): return _display_k(k, sup_map.get(m))
 
     def _emit_chunk_tabular(chunk):
-        n_f = len(chunk)
+        factor_metrics = [_metrics_for_factor(f, classification_keys) for f in chunk]
         col_max = {}
-        for f in chunk:
-            for metric_key, _ in _TB_METRICS:
+        for f, metrics in zip(chunk, factor_metrics):
+            for metric_key, _ in metrics:
                 vals = [_mean_factor_f1(scores_per_split, m, k, f, metric_key, tasks)
                         for m, k in row_keys]
                 valid = [v for v in vals if v is not None]
                 col_max[(f, metric_key)] = max(valid) if valid else None
         print(r"\resizebox{\textwidth}{!}{%")
         print(r"\begin{tabular}{l c "
-              + " ".join("ccc" for _ in chunk) + "}")
+              + " ".join("c" * len(metrics) for metrics in factor_metrics) + "}")
         print(r"\toprule")
         print(r"\multirow{2}{*}{\textbf{Model}} & \multirow{2}{*}{\textbf{$k$}}")
-        for f in chunk:
-            print(r"& \multicolumn{" + str(n_metrics) + r"}{c}{\textbf{"
+        for f, metrics in zip(chunk, factor_metrics):
+            print(r"& \multicolumn{" + str(len(metrics)) + r"}{c}{\textbf{"
                   + _esc_latex(_short(f)) + "}}")
         print(r" \\")
-        for i in range(n_f):
-            lo = 3 + i * n_metrics
-            hi = 2 + (i + 1) * n_metrics
+        col = 3
+        for metrics in factor_metrics:
+            lo, hi = col, col + len(metrics) - 1
             print(r"\cmidrule(lr){" + f"{lo}-{hi}" + "}")
+            col = hi + 1
         print(r" &  "
-              + " ".join("& " + " & ".join(lbl for _, lbl in _TB_METRICS)
-                          for _ in chunk)
+              + " ".join("& " + " & ".join(lbl for _, lbl in metrics)
+                          for metrics in factor_metrics)
               + r" \\")
         print(r"\midrule")
         prev_model = None
@@ -631,8 +643,8 @@ def _print_factor_table_latex(title, label_suffix, factors, scores_per_split,
             if prev_model is not None and m != prev_model:
                 print(r"\midrule")
             cells = [_esc_latex(_disp(m)), _kshow(m, k)]
-            for f in chunk:
-                for metric_key, _ in _TB_METRICS:
+            for f, metrics in zip(chunk, factor_metrics):
+                for metric_key, _ in metrics:
                     v = _mean_factor_f1(scores_per_split, m, k, f,
                                          metric_key, tasks)
                     fmt = _fmt_f1(v)
@@ -895,14 +907,6 @@ def _print_strategy_comparison_latex(label_suffix, scores_per_split, models,
           r" & \textbf{E} & \textbf{S} & \textbf{K} \\")
     print(r"\midrule")
 
-    col_max_strategy = {}
-    for tlist_key, tlist in (("joint", joint_tasks), ("indiv", indiv_tasks)):
-        for metric_key, _ in _TB_METRICS:
-            vals = [_mean_overall_f1(scores_per_split, m, k, metric_key, tlist)
-                    for m, k in row_keys if tlist]
-            valid = [v for v in vals if v is not None]
-            col_max_strategy[(tlist_key, metric_key)] = max(valid) if valid else None
-
     prev_model = None
     for (m, k) in row_keys:
         if prev_model is not None and m != prev_model:
@@ -912,11 +916,7 @@ def _print_strategy_comparison_latex(label_suffix, scores_per_split, models,
             for metric_key, _ in _TB_METRICS:
                 v = (_mean_overall_f1(scores_per_split, m, k, metric_key, tlist)
                      if tlist else None)
-                fmt = _fmt_f1(v)
-                mx = col_max_strategy.get((tlist_key, metric_key))
-                if v is not None and mx is not None and v == mx:
-                    fmt = _tex_bold(fmt)
-                cells.append(fmt)
+                cells.append(_fmt_f1(v))
         print(" & ".join(cells) + r" \\")
         prev_model = m
     print(r"\bottomrule")
@@ -1412,7 +1412,8 @@ def _collect_combined_factor_order(tasks, scores_by_metric, structure,
 
 
 def _print_field_combined_text(tasks, scores_exact, scores_soft, scores_kw,
-                                structure, force_factors=None):
+                                structure, force_factors=None,
+                                classification_keys=None):
     scores_by_metric = [("exact", scores_exact),
                         ("soft", scores_soft),
                         ("kw", scores_kw)]
@@ -1441,11 +1442,15 @@ def _print_field_combined_text(tasks, scores_exact, scores_soft, scores_kw,
     print("  " + line)
 
     def _emit_factor_row(f):
+        is_cls = f in (classification_keys or ())
         cells = []
         for t in tasks:
             for metric_key, _ in _METRIC_LABELS:
                 sc_dict = dict(scores_by_metric)[metric_key]
-                v = _best_field_f1(sc_dict, f, t) if sc_dict else None
+                if is_cls and metric_key != "exact":
+                    v = None
+                else:
+                    v = _best_field_f1(sc_dict, f, t) if sc_dict else None
                 cells.append(_fmt_f1(v).rjust(metric_w))
             cells.append("|")  # visual separator (replaced below)
         # Drop trailing "|" sentinel and join with task-block separator " | "
@@ -1471,7 +1476,8 @@ def _print_field_combined_text(tasks, scores_exact, scores_soft, scores_kw,
 
 
 def _print_field_combined_latex(tasks, scores_exact, scores_soft, scores_kw,
-                                 structure, force_factors=None):
+                                 structure, force_factors=None,
+                                 classification_keys=None):
     scores_by_metric = [("exact", scores_exact),
                         ("soft", scores_soft),
                         ("kw", scores_kw)]
@@ -1518,7 +1524,8 @@ def _print_field_combined_latex(tasks, scores_exact, scores_soft, scores_kw,
     col_max_field = {}
     for t in tasks:
         for metric_key, _ in _METRIC_LABELS:
-            vals = [_best_field_f1(sc_map[metric_key], f, t) for f in factors]
+            vals = [None if (f in (classification_keys or ()) and metric_key != "exact")
+                    else _best_field_f1(sc_map[metric_key], f, t) for f in factors]
             valid = [v for v in vals if v is not None]
             col_max_field[(t, metric_key)] = max(valid) if valid else None
 
@@ -1527,10 +1534,14 @@ def _print_field_combined_latex(tasks, scores_exact, scores_soft, scores_kw,
         if i > 0 and f not in is_sub:
             print(r"\midrule")
         cells = [_row_label(f)]
+        is_cls = f in (classification_keys or ())
         for t in tasks:
             for metric_key, _ in _METRIC_LABELS:
                 sc_dict = sc_map[metric_key]
-                v = _best_field_f1(sc_dict, f, t) if sc_dict else None
+                if is_cls and metric_key != "exact":
+                    v = None
+                else:
+                    v = _best_field_f1(sc_dict, f, t) if sc_dict else None
                 fmt = _fmt_f1(v)
                 mx = col_max_field.get((t, metric_key))
                 if v is not None and mx is not None and v == mx:
@@ -1576,6 +1587,11 @@ def _render_scaling_chart(tasks, llm_models_by_task, scores_per_split,
     """Save ONE figure (1×3 grid of subplots, one per metric) showing
     few-shot scaling for every LLM model. Y values are F1 sum-averaged
     across (5 splits × N tasks in scope), matching table-1's semantics.
+
+    Extraction factors only — accident_type and any other classification
+    factor are excluded (`_mean_overall_f1` reads `factors.overall`, which
+    already has accident_type stripped for E2 tasks; classification
+    factors are skip_columns'd out of `overall` entirely for every task).
 
     Skipped without error when matplotlib isn't installed — analysis still
     produces text + LaTeX. Output goes to `output_path` (a .png path)."""
@@ -1660,12 +1676,16 @@ def _render_scaling_chart(tasks, llm_models_by_task, scores_per_split,
             handles, labels = h, l
             break
     if handles:
+        # ncol=4 wraps 5+ models onto two legend rows; anchor it a bit below
+        # the axes (not right at y=0) so the upper row clears the "$k$"
+        # xlabel instead of overlapping it, and reserve a matching bottom
+        # margin in tight_layout below.
         fig.legend(handles, labels,
                     loc="lower center", ncol=min(len(handles), 4),
-                    bbox_to_anchor=(0.5, -0.05),
+                    bbox_to_anchor=(0.5, -0.06),
                     fontsize=18, frameon=False)
 
-    fig.tight_layout(rect=[0, 0.05, 1, 1])
+    fig.tight_layout(rect=[0, 0.1, 1, 1])
     # PDF is vector — DPI is irrelevant for the lines/text, but kept for
     # any raster sub-elements (none today). `bbox_inches="tight"` trims
     # the page to the figure extent including the bottom legend.
@@ -1732,6 +1752,15 @@ def _render_analysis_tables_one(preds_golds, skip_unions=None, *, structure=None
     if is_supervised_map:
         sup_map.update(is_supervised_map)
 
+    # Classification factors per the key map (accident_type, and any other
+    # closed-vocabulary label) — only their exact-match F1 is meaningful.
+    # tb1/tb4 (per-factor column blocks) drop soft/keyword to a single
+    # Exact column for these via `_metrics_for_factor`; the field-level
+    # heatmap (factors as rows sharing a fixed task×metric column axis,
+    # so a row can't have fewer columns than its neighbors) instead blanks
+    # those cells to "--".
+    classification_keys = set(classes_map.keys()) if classes_map else set()
+
     # Collect models / tasks / shots from the pooled keys.
     tasks = sorted({t for (_, t, _) in preds_golds})
     all_models = sorted({m for (m, _, _) in preds_golds}, key=_natural_key)
@@ -1790,14 +1819,18 @@ def _render_analysis_tables_one(preds_golds, skip_unions=None, *, structure=None
         all_seen_factors.add("accident_type")
     causal_factors, sub_factors = _split_main_and_sub_factors(
         structure, all_seen_factors)
-    # accident_type is a classification label, not a factor extraction
-    # target — it sits in `strict_keys` and gets stripped from overall for
-    # E2 tasks via `_score_one_combo`. Pulling it out of the causal-factor
-    # table keeps the tb1 focused on extraction quality and avoids the
-    # 95–97% accident_type cells dominating the visual scale. The standalone
-    # accident_type comparison still lives in the cross-model check's RANK
-    # [accident_type] block.
-    causal_factors = [f for f in causal_factors if f != "accident_type"]
+    # accident_type is a classification label, not an extraction target —
+    # it sits in `strict_keys` and is stripped from `factors.overall` for
+    # E2 tasks via `_score_one_combo` (see per-record scoring), but
+    # `per_factor.accident_type` is left intact, and any task in scope that
+    # actually predicts it (JHE/IHE — both are E2* end-to-end variants)
+    # should surface that number in the causal-factor table too. It lands
+    # in `causal_factors` as a leftover (no parent in `structure`); hoist it
+    # to the front, matching `_collect_factor_order`'s convention for the
+    # per-task field-level heatmap so it's easy to find in both tables.
+    if "accident_type" in causal_factors:
+        causal_factors.remove("accident_type")
+        causal_factors.insert(0, "accident_type")
 
     # --- TEXT ---
     text_buf = io.StringIO()
@@ -1818,7 +1851,8 @@ def _render_analysis_tables_one(preds_golds, skip_unions=None, *, structure=None
         _print_factor_table_text(
             f"CAUSAL FACTORS  [F1 mean over splits × {task_phrase}]",
             causal_factors, scores_per_split, all_models, tb_shots,
-            sup_map, tasks, structure, model_aliases=model_aliases)
+            sup_map, tasks, structure, model_aliases=model_aliases,
+            classification_keys=classification_keys)
         # TABLE 2: sub-causal factors — exact F1 only, grouped under
         # their parent main in a 2-level header. Only one cell per
         # sub-factor → fits a single tabular.
@@ -1845,7 +1879,8 @@ def _render_analysis_tables_one(preds_golds, skip_unions=None, *, structure=None
         # task × metric, cell = peak F1 across all models & k-shots.
         _print_field_combined_text(
             tasks, scores_exact, scores_soft, scores_kw, structure,
-            force_factors=force_factors)
+            force_factors=force_factors,
+            classification_keys=classification_keys)
     text_output = text_buf.getvalue()
     logger.info("%s", text_output.rstrip("\n"))
 
@@ -1868,8 +1903,11 @@ def _render_analysis_tables_one(preds_golds, skip_unions=None, *, structure=None
                      r"and across " + tex_task_phrase + r". "
                      r"Columns E / S / K denote exact (sim=1.0), soft "
                      r"(sim=0.8), and keyword matching. Supervised models "
-                     r"grouped first; LLMs below."),
-            model_aliases=model_aliases)
+                     r"grouped first; LLMs below. Classification factors "
+                     r"(e.g. accident\_type) only report Exact — soft/"
+                     r"keyword match isn't meaningful for a label."),
+            model_aliases=model_aliases,
+            classification_keys=classification_keys)
         _print_subcausal_grouped_latex(
             f"Sub-causal factors — exact F1 over splits × {', '.join(tasks)}",
             "subcausal-factors",
@@ -1916,7 +1954,8 @@ def _render_analysis_tables_one(preds_golds, skip_unions=None, *, structure=None
         # Combined field-level F1 — kept; uses pooled scores for the peak.
         _print_field_combined_latex(
             tasks, scores_exact, scores_soft, scores_kw, structure,
-            force_factors=force_factors)
+            force_factors=force_factors,
+            classification_keys=classification_keys)
     tex_output = tex_buf.getvalue()
 
     if log_path:
