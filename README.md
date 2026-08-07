@@ -13,9 +13,9 @@
 
 ## Supported Datasets
 
-| Dataset Name   | Short Name     | Supported Tasks |
-|----------------|----------------|-----------------|
-| `ConstructCIE` | `constructcie` | JHE, IHE        |
+| Dataset Name   | Short Name     | Supported Tasks | Links |
+|----------------|----------------|-----------------| ----------------- |
+| `ConstructCIE` | `constructcie` | JHE, IHE        | https://huggingface.co/datasets/lab-flair/constructcie |
 
 ## Supported Settings
 
