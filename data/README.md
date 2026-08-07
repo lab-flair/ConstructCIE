@@ -1,86 +1,41 @@
-## Processed Data Format
+# Data
 
-The data file should contain a json string in each line. The json format is as follows.
+Put your data file in `raw_data/` (as `<name>.json`), then run `data_processor.py`
+with the matching name. It picks up the id maps under `templates/<name>/` and
+rebuilds the per-split `train.json` / `val.json` / `test.json` files under
+`processed_data/<name>/`.
+
+## Usage
+
+```bash
+python data_processor.py --name <dataset_name>
+```
+
+`<dataset_name>` must match both the file in `raw_data/` and an existing
+template folder in `templates/` (e.g. `raw_data/<name>.json` +
+`templates/<name>/`). New datasets can be added over time, each under its own
+name — drop both in place and run the command with that name.
+
+Options (all optional): `-n/--name` dataset name (default `data`),
+`-i/--input` raw data dir (default `raw_data/`), `-t/--template-dir` id-map dir
+(default `templates/`), `-o/--output` output dir (default `processed_data/`).
+
+```
+data/
+├── raw_data/<name>.json                       # full dataset, JSONL
+├── templates/<name>/split{i}/index.json       # id maps per split
+└── processed_data/<name>/split{i}/            # output: train.json, val.json, test.json, index.json
+```
+
+## Data format
+
+Note: this is **not** the standard TextEE format. Each line of
+`raw_data/<name>.json` is one JSON record:
 
 ```JSON5
 {
-  "doc_id": "DOC101",  // required, an unique string for each document
-  "wnd_id": "DOC101-2",  // required, an unique string for each text instance in the document
-  "text": "James will start his first job at Google in June.",  // required, the plain text of the instance
-  "lang": "en",  // required, the langauge for this instance
-  "tokens": ["James", "will", "start", "his", "first", "job", "at", "Google", "in", "June", "."],  // required, the list of tokens in the sentence  
-  "entity_mentions": [  // required, the list of entity mentions
-    {
-      "id": "DOC101-2-E0",
-      "entity_type": "PER", 
-      "text": "James",
-      "start": 0,
-      "end": 1, 
-    }, 
-    {
-      "id": "DOC101-2-E1",
-      "entity_type": "ORG", 
-      "text": "Google",
-      "start": 7,
-      "end": 8,
-    },
-    ...
-  ],  
-  "event_mentions": [  // required, the list event mentions
-    {
-      "id": "DOC101-2-EV0", 
-      "event_type": "START_JOB", 
-      "trigger": {  // trigger span
-        "text": "start",
-        "start": 2,
-        "end": 3,
-      },
-      "arguments": [  // the list of argument-role pairs
-        {
-          "entity_id": "DOC101-2-E1",  // corresonding to entity mentions
-          "role": "company",
-          "text": "Google",
-          "start": 7,
-          "end": 8,
-        },
-        {
-          "entity_id": "DOC101-2-E3",  // corresonding to entity mentions
-          "role": "time",
-          "text": "June",
-          "start": 9,
-          "end": 10,
-        },
-        ...
-      ],
-    },
-    {
-    ...
-    }
-  ],
-  "relation_mentions": [  // optional, the list of relation mentions
-    {
-      "id": "DOC101-2-R1",
-      "relation_type": "employed_by",
-      "arguments": [
-        {
-          "entity_id": "DOC101-2-E0",  // corresonding to entity mentions
-          "role": "Arg-1",
-          "text": "James",
-          "start": 0,
-          "end": 1,
-        },
-        {
-          "entity_id": "DOC101-2-E1",  // corresonding to entity mentions
-          "role": "Arg-2",
-          "text": "Google",
-          "start": 7,
-          "end": 8,
-        },
-      ],
-    },
-    ...
-  ], 
+  "id": 162549.015,  // unique id, matched against the ids in templates/<name>/split{i}/index.json
+  "accident_report": "{'text': [...], 'children': {...}}",  // hierarchical annotation (stringified dict); each node is an extraction ({text, keywords, children}) or classification ({value}) node
+  "accident_type": {"type": "classification", "value": ["struck-by"]}
 }
 ```
-
-
