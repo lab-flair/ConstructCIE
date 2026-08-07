@@ -988,6 +988,12 @@ def main():
                 if entry:
                     skip_map[int(shot_str)] = entry.get("aggregate") or []
 
+            # Base skip vector from the global mapping (same source -a check
+            # uses via base_skip): structural columns like accident_report /
+            # id that must never be analyzed as factors.
+            err_base_skip = list(get_global_config(
+                "skip_columns", model=model_key, task=task) or [])
+
             # error_analysis owns the subfolder naming. We just hand it the
             # bare log_dir (or --log_path override) and let it wrap with
             # <run_id>/<task>/<dataset>/<model>/ when auto_subdir is on.
@@ -1008,6 +1014,7 @@ def main():
                 auto_subdir=(args.log_path is None),
                 write_compare=args.aggregate,
                 skip_factors_by_shot=skip_map,
+                base_skip=err_base_skip,
                 norm=err_norm,
                 variant=_variant_suffix(model_key=model_key, task=task),
             )
@@ -1365,17 +1372,17 @@ def main():
     elif args.action == "error":
         from main.error_analysis import (
             analyze_combination, print_summary_tables,
-            write_comparison_log, make_run_id,
+            write_aggregate_comparison_log, make_run_id,
         )
         # Cross-(model, dataset, task, k) comparison log — opt-in via
-        # --aggregate. Sits at the root of the same per-run folder
-        # analyze_combination wrote into: <log_dir>/<run_id>/compare_all.log
-        # (or directly under --log_path when caller pinned a flat dir).
+        # --aggregate. Nested one subfolder per dataset under the same
+        # per-run folder analyze_combination wrote into (or directly under
+        # --log_path when caller pinned a flat dir) — same layout -a
+        # analysis uses (progress_analyzer.per_dataset_log_path).
         if args.aggregate and len(all_error_jsons) >= 2:
             global_compare_dir = args.log_path or os.path.join(
                 log_dir, make_run_id("error_analysis"))
             os.makedirs(global_compare_dir, exist_ok=True)
-            global_compare_path = os.path.join(global_compare_dir, "compare_all.log")
             # Same alias map as analysis mode — keeps the LaTeX by-model
             # summary using short names (e.g. "Qwen3.5-9B" rather than the
             # full HF/checkpoint key).
@@ -1383,8 +1390,19 @@ def main():
                 full: short
                 for short, full in (CONFIG.get("model_alts") or {}).items()
             }
-            write_comparison_log(all_error_jsons, global_compare_path,
-                                 model_aliases=err_model_aliases)
+            # Supervised list from the global mapping — orders by-model table
+            # rows as supervised first, then LLMs, ascending name within each.
+            err_supervised = set(
+                (CONFIG.get("model_type") or {}).get("supervised") or [])
+            # Row order for the grouped LaTeX table — model_alts' own key
+            # order (main/global/model_mapping.json), so ordering and short
+            # names both come from the same config instead of a hardcoded list.
+            err_model_order = list((CONFIG.get("model_alts") or {}).keys())
+            write_aggregate_comparison_log(
+                all_error_jsons, global_compare_dir,
+                model_aliases=err_model_aliases,
+                supervised_models=err_supervised,
+                model_order=err_model_order)
         logger.info("\n🔎 Error analysis complete. %d valid combinations processed.", count)
     elif args.dry_run:
         logger.info("\n🚧 Dry Run Complete. Checked %d valid combinations.", count)
