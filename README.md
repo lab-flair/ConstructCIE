@@ -22,8 +22,6 @@ ConstructCIE is a benchmark and codebase for causal information extraction from 
 - Standardized evaluation for accident-conditioned and end-to-end extraction settings.
 - Implementations of supervised baselines and instruction-tuned LLM approaches.
 
-Please see our paper, [ConstructCIE: Causal Information Extraction from Construction Accident Reports](), for additional details. We plan to continue expanding the dataset, models, and evaluation settings.
-
 ---
 
 ## Supported Datasets
