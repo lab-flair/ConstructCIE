@@ -7,15 +7,30 @@
 [**Models**](#supported-models) |
 [**Setup**](#setup) |
 [**Usage**](#usage) |
-[**Project Structure**](#project-structure)
+[**Project Structure**](#project-structure) |
+[**Paper**](https://arxiv.org/abs/2608.06495) 
+
+**Authors**: [Hung Nguyen](https://www.linkedin.com/in/hung-nguyen-3b63191a0/), [Jaehoon Lee](https://jaehoonblog.com/), [Namgyun Kim](https://www.arch.tamu.edu/directory/namgyun-kim/), [Kuan-Hao Huang](https://khhuang.me/)
+
+---
+
+## Introduction
+
+ConstructCIE is a benchmark and codebase for causal information extraction from construction accident reports.
+- 530 expert-annotated OSHA accident reports with hierarchical causal annotations.
+- Support for accident types, causal factors, sub-causal factors, and long or discontinuous evidence spans.
+- Standardized evaluation for accident-conditioned and end-to-end extraction settings.
+- Implementations of supervised baselines and instruction-tuned LLM approaches.
+
+Please see our paper, [ConstructCIE: Causal Information Extraction from Construction Accident Reports](), for additional details. We plan to continue expanding the dataset, models, and evaluation settings.
 
 ---
 
 ## Supported Datasets
 
-| Dataset Name   | Short Name     | Supported Tasks | Links |
-|----------------|----------------|-----------------| ----------------- |
-| `ConstructCIE` | `constructcie` | JHE, IHE        | https://huggingface.co/datasets/lab-flair/constructcie |
+| Dataset Name   | Short Name     | Supported Tasks |
+|----------------|----------------|-----------------|
+| `ConstructCIE` | `constructcie` | JHE, IHE        |
 
 ## Supported Settings
 
@@ -179,4 +194,17 @@ If you are on an interactive GPU node or a machine without `sbatch`, skip the jo
 ├── jobs/             # Generated Slurm/shell job scripts
 ├── results/          # Model outputs and evaluation results
 └── logs/             # Job logs
+```
+
+## Citation
+```bib
+@misc{nguyen2026constructciedatasetextractingcausal,
+      title={ConstructCIE: A Dataset for Extracting Causal Information from Construction Accident Narratives}, 
+      author={Hung Nguyen and Jaehoon Lee and Namgyun Kim and Kuan-Hao Huang},
+      year={2026},
+      eprint={2608.06495},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2608.06495}, 
+}
 ```
