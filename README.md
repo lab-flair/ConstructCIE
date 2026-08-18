@@ -26,9 +26,9 @@ ConstructCIE is a benchmark and codebase for causal information extraction from 
 
 ## Supported Datasets
 
-| Dataset Name   | Short Name     | Supported Tasks |
-|----------------|----------------|-----------------|
-| `ConstructCIE` | `constructcie` | JHE, IHE        |
+| Dataset Name   | Short Name     | Supported Tasks | Link |
+|----------------|----------------|-----------------|-----------------|
+| `ConstructCIE` | `constructcie` | JHE, IHE        | https://huggingface.co/datasets/lab-flair/constructcie |
 
 ## Supported Settings
 
