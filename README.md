@@ -198,13 +198,12 @@ If you are on an interactive GPU node or a machine without `sbatch`, skip the jo
 
 ## Citation
 ```bib
-@misc{nguyen2026constructciedatasetextractingcausal,
-      title={ConstructCIE: A Dataset for Extracting Causal Information from Construction Accident Narratives}, 
+@inproceedings{nguyen2026constructcie,
+      title={ConstructCIE: A Dataset for Extracting Causal Information from Construction Accident Narratives},
       author={Hung Nguyen and Jaehoon Lee and Namgyun Kim and Kuan-Hao Huang},
+      booktitle={Findings of the Association for Computational Linguistics: EMNLP 2026},
       year={2026},
-      eprint={2608.06495},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/2608.06495}, 
+      note={arXiv:2608.06495},
+      url={https://arxiv.org/abs/2608.06495},
 }
 ```
