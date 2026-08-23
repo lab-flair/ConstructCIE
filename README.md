@@ -2,6 +2,8 @@
 
 **A Dataset for Extracting Causal Information from Construction Accident Narratives**
 
+> Accepted to **Findings of the Association for Computational Linguistics: EMNLP 2026**
+
 [**Datasets**](#supported-datasets) |
 [**Settings**](#supported-settings) |
 [**Models**](#supported-models) |
