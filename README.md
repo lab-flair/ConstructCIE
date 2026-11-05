@@ -10,7 +10,7 @@
 [**Setup**](#setup) |
 [**Usage**](#usage) |
 [**Project Structure**](#project-structure) |
-[**Paper**](https://arxiv.org/abs/2608.06495) 
+[**Paper**](https://aclanthology.org/2026.findings-emnlp.537/) 
 
 **Authors**: [Hung Nguyen](https://www.linkedin.com/in/hung-nguyen-3b63191a0/), [Jaehoon Lee](https://jaehoonblog.com/), [Namgyun Kim](https://www.arch.tamu.edu/directory/namgyun-kim/), [Kuan-Hao Huang](https://khhuang.me/)
 
