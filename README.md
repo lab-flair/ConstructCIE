@@ -198,12 +198,25 @@ If you are on an interactive GPU node or a machine without `sbatch`, skip the jo
 
 ## Citation
 ```bib
-@inproceedings{nguyen2026constructcie,
-      title={ConstructCIE: A Dataset for Extracting Causal Information from Construction Accident Narratives},
-      author={Hung Nguyen and Jaehoon Lee and Namgyun Kim and Kuan-Hao Huang},
-      booktitle={Findings of the Association for Computational Linguistics: EMNLP 2026},
-      year={2026},
-      note={arXiv:2608.06495},
-      url={https://arxiv.org/abs/2608.06495},
+@inproceedings{nguyen-etal-2026-constructcie,
+    title = "{C}onstruct{CIE}: A Dataset for Extracting Causal Information from Construction Accident Narratives",
+    author = "Nguyen, Hung  and
+      Lee, Jaehoon  and
+      Kim, Namgyun  and
+      Huang, Kuan-Hao",
+    editor = "Lee, Hung-Yi  and
+      Dev, Sunipa  and
+      Li, Jessy  and
+      Elliott, Desmond",
+    booktitle = "Findings of the {A}ssociation for {C}omputational {L}inguistics: {EMNLP} 2026",
+    month = oct,
+    year = "2026",
+    address = "Budapest, Hungary",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2026.findings-emnlp.537/",
+    doi = "10.18653/2026.findings-emnlp.537",
+    pages = "11284--11302",
+    ISBN = "979-8-89176-462-0",
+    abstract = "Construction accident narratives contain rich causal information, but the evidence is often implicit, long-span, and distributed. We introduce ConstructCIE, a manually annotated dataset for Causal Information Extraction from OSHA construction accident reports. The dataset uses a hierarchical schema for accident types, causal factors, sub-causal factors, and supporting evidence spans. We evaluate supervised sequence taggers and instruction-tuned LLMs in an end-to-end hierarchical extraction setting. Results show that most evaluated models achieve strong accident-type prediction and recover broad causal meaning but remain limited in precise span-level extraction. Joint Hierarchical Extraction generally achieves stronger exact and soft matching, while Individual Hierarchical Extraction sometimes achieves higher keyword F1. Error distributions vary by extraction strategy, but evidence-selection and span-boundary errors remain common. These findings show that reliable Causal Information Extraction for construction accidents requires stronger domain grounding and more accurate evidence extraction. The code and data can be found at https://github.com/lab-flair/ConstructCIE."
 }
 ```
